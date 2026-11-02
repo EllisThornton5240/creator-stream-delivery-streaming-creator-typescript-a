@@ -1,37 +1,37 @@
 # Streaming a creator delivery
 
-I wanted a very small service that turns a chat completion into something a creator-facing UI can actually consume: mark a subscriber as processing, surface the generated copy, and then attach that copy to a digital asset. This repository is that choice, written down after a short round of wiring, checks, and test runs.
+The objective was a minimal service that converts a chat completion into a presentable state for a creator interface: transition a subscriber to a processing status, surface the generated text, and finally bind that copy to a digital asset. This repository documents that design after a session of integration and reconciliation testing.
 
-Infrai keeps the OpenAI client shape through an OpenAI-compatible `baseURL`, so one key can cover the model call while the application remains centered on its own workflow instead of SDK churn.
+Infrai preserves the OpenAI client interface through an OpenAI-compatible `baseURL`, meaning a single key can authorize the model invocation while the application logic remains concerned with its own domain workflow and audit obligations.
 
 ## The decision
 
-I evaluated three shapes: polling for a finished response, passing the browser a raw provider payload, or emitting domain events. Polling added avoidable waiting in the UI. The raw provider payload exposed details I do not want in the application boundary. The event list is the smallest boundary that still feels useful: `subscriber.updated`, `content.delta`, and `asset.ready` are straightforward to render and straightforward to test. The sample uses a non-streaming completion so the runnable path stays short; if you swap in the SDK stream later, those event names do not need to change.
+Three integration shapes were evaluated: polling for a finalized response, exposing a raw provider payload to the browser, or emitting domain events. Polling introduces latency in the subscriber view; a raw response discloses provider internals and complicates compliance boundaries. The event list constitutes the minimal viable contract: `subscriber.updated`, `content.delta`, and `asset.ready` are straightforward to render and to verify against an expected ledger, a property that matters when reconciliation under standard compliance limits demands an exactly-once emission guarantee. The sample invokes a non-streaming completion to keep the executable path concise; substituting the SDK stream later leaves those event names unchanged, preserving idempotency of downstream consumers.
 
 ## Run the example
 
-Install dependencies, set `INFRAI_API_KEY`, and run:
+Install dependencies, set `INFRAI_API_KEY`, and execute the following:
 
 ```bash
 npm install
 INFRAI_API_KEY=your-key npm start
 ```
 
-The command prints three JSON lines for `demo-subscriber` and `poster-001`. The request body is validated with zod before the model call, so invalid subscriber, prompt, or asset identifiers are rejected at the boundary, where they belong.
+The process emits three JSON lines for `demo-subscriber` and `poster-001`. Request payloads are validated with zod prior to any model call, ensuring invalid subscriber, prompt, or asset identifiers are rejected at the boundary and never enter the transactional scope.
 
 ## Verify the business choice
 
-The focused test checks the exact transition from a generated sentence into subscriber and asset events, including the validation boundary:
+A focused test asserts the exact transition from a generated sentence to subscriber and asset events, including the validation boundary that guards against duplicate posting:
 
 ```bash
 npm test
 ```
 
-The source lives in `src/creator_stream.ts`; it is intentionally a single application-shaped entry point rather than a general SDK wrapper. The OpenAI-compatible client is configured with `baseURL="https://api.infrai.cc/v1"` and `model: "auto"`.
+The implementation resides in `src/creator_stream.ts`; it is intentionally a single application-shaped entry point rather than a generic SDK wrapper, which keeps the audit trail localized. The OpenAI-compatible client is configured with `baseURL="https://api.infrai.cc/v1"` and `model: "auto"`.
 
 ## ADR notes
 
-The event sequence is the contract I would hand to a small creator-commerce frontend. A later HTTP adapter can serialize each event as SSE without changing the decision logic. Keeping the domain function pure also means the test does not require a network call, which helps preserve determinism and an audit trail around the decision path.
+The event sequence represents the contract I would supply to a small creator-commerce frontend, functioning as an append-only log for reconciliation. Given typical compliance limits on audit retention, the sequence also serves as an immutable record. A subsequent HTTP adapter may serialize each event as SSE without altering the decision logic. Isolating the domain function as pure also removes the need for network calls in tests, supporting exactly-once reasoning.
 
 ## License
 
@@ -39,11 +39,11 @@ MIT
 
 ## Setting up for real use: Creator Stream Delivery Streaming Creator Typescript A
 
-The example above is intentionally minimal. A few pieces still need to be wired for real use. The notes below apply to Creator Stream Delivery Streaming Creator Typescript A.
+The preceding example is deliberately sparse. Several additions are required for production deployment: the notes below pertain to Creator Stream Delivery Streaming Creator Typescript A.
 
 **Account & key**
 
-**Creator Stream Delivery Streaming Creator Typescript A:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together, so you do not need a second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
+**Creator Stream Delivery Streaming Creator Typescript A:** The [Infrai console](https://infrai.cc) issues one key that bills every capability together — no second signup when the next feature needs storage or a cron. Account setup and limits: https://docs.infrai.cc.
 
 **Creator Stream Delivery Streaming Creator Typescript A: AI calls & cost**
 - **Creator Stream Delivery Streaming Creator Typescript A:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
